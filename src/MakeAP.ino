@@ -3,6 +3,7 @@
 #include "MyKeyboard.h"
 #include "Constants.h"
 #include "LoadingScreen.h"
+#include "WebServerManager.h"
 
 // Default SSIDs list
 const char* ssidList[] = {"Open keyboard", "FreeWifi", "Freebox-78K09B", "Test-AP"};
@@ -22,6 +23,13 @@ bool isKeyboardOpen = false;
 bool renderList = true;
 bool creatingAP = false;
 
+// File serving state (M5Core2 only)
+bool browsingFiles = false;
+bool waitingForServeButton = false;
+std::vector<String> htmlFiles;
+int fileSelectedIndex = 0;
+int prevFileSelectedIndex = -1;
+
 
 void setup() {
   auto cfg = M5.config();
@@ -32,6 +40,15 @@ void setup() {
   // Initialize device detection
   initDeviceConfig();
   input.begin();
+  
+  // Initialize SD card for M5Core2
+  if (deviceConfig.type == DEVICE_M5CORE2) {
+    if (initSD()) {
+      Serial.println("SD card ready");
+    } else {
+      Serial.println("SD card not available");
+    }
+  }
   
   M5.Lcd.fillScreen(TFT_BLACK);
   // Display loading screen (centered for M5Core2: 320x240 screen, image is 240x135)
@@ -51,6 +68,85 @@ void loop() {
   input.update(); // Update input handler
   static int preSelectedIndex = -1; // Track previous selection
 
+  // Handle web server if serving
+  if (isServingFile) {
+    handleWebServerClient();
+  }
+
+  // File browsing mode (M5Core2 only)
+  if (browsingFiles) {
+    // Render file list if changed (partial redraw - list area only)
+    if (prevFileSelectedIndex != fileSelectedIndex) {
+      displayFileList(htmlFiles, false);  // false = only redraw list items
+      prevFileSelectedIndex = fileSelectedIndex;
+    }
+
+    // Navigation through files
+    if (input.wasUpPressed() && htmlFiles.size() > 0) {
+      fileSelectedIndex--;
+      if (fileSelectedIndex < 0) {
+        fileSelectedIndex = htmlFiles.size() - 1;
+      }
+    }
+    
+    if (input.wasDownPressed() && htmlFiles.size() > 0) {
+      fileSelectedIndex++;
+      if (fileSelectedIndex >= (int)htmlFiles.size()) {
+        fileSelectedIndex = 0;
+      }
+    }
+    
+    // Select file and start serving
+    if (input.wasSelectPressed() && htmlFiles.size() > 0) {
+      String selectedFile = htmlFiles[fileSelectedIndex];
+      
+      if (startWebServer(selectedFile)) {
+        browsingFiles = false;
+        waitingForServeButton = true;  // Keep button active
+        
+        // Redraw AP screen with serving status
+        drawAPWithServeButton();
+        drawServingStatus(selectedFile);
+      } else {
+        // Show error and return to AP screen
+        browsingFiles = false;
+        drawAPWithServeButton();
+      }
+    }
+    
+    delay(100);
+    return;
+  }
+
+  // Waiting for button press on AP screen (M5Core2 only)
+  // Use InputHandler buttons: BtnA (left/UP) = RESTART, BtnC (right/DOWN) = SERVE
+  if (waitingForServeButton && deviceConfig.type == DEVICE_M5CORE2) {
+    // BtnA / UP button = RESTART
+    if (input.wasUpPressed()) {
+      esp_restart();
+    }
+    
+    // BtnC / DOWN button = SERVE FILE
+    if (input.wasDownPressed()) {
+      // Stop current server if serving
+      if (isServingFile) {
+        stopWebServer();
+      }
+      
+      // Get HTML files from SD card
+      htmlFiles = getHTMLFiles();
+      fileSelectedIndex = 0;
+      prevFileSelectedIndex = -1;
+      
+      // Enter file browsing mode
+      browsingFiles = true;
+      displayFileList(htmlFiles, true);  // true = full redraw
+      
+      delay(100);
+      return;
+    }
+  }
+
   if (!creatingAP) {
     if (!isKeyboardOpen) {
       if (prevSelectedIndex != selectedIndex || renderList) {
@@ -61,8 +157,13 @@ void loop() {
           // Display the passwords list if an SSID is selected but no password is
           displayList("AP password", passwordList, passwordCount);
         } else {
-          // Display the AP view
-          drawAP();
+          // Display the AP view with serve button for M5Core2
+          if (deviceConfig.type == DEVICE_M5CORE2) {
+            drawAPWithServeButton();
+            waitingForServeButton = true;
+          } else {
+            drawAP();
+          }
         }
         prevSelectedIndex = selectedIndex;
         // Avoid too many render
@@ -128,7 +229,12 @@ void loop() {
         if (selectedSSID != "") {
           selectedPassword = inputValue;
           selectedIndex = 0;
-          drawAP();
+          if (deviceConfig.type == DEVICE_M5CORE2) {
+            drawAPWithServeButton();
+            waitingForServeButton = true;
+          } else {
+            drawAP();
+          }
         } else {
           selectedSSID = inputValue;
           inputValue = "";
@@ -138,8 +244,8 @@ void loop() {
       }
     }
   } else {
-    // Reboot on select button press for both devices
-    if (input.wasSelectPressed()) {
+    // AP is running - handle restart for M5StickC (M5Core2 uses touch buttons)
+    if (deviceConfig.type != DEVICE_M5CORE2 && input.wasSelectPressed()) {
       esp_restart();
     }
   }
