@@ -7,5 +7,6 @@ void resetDisplay(int x = 0, int y = 0, uint16_t fc = FGCOLOR, int size = FONT_M
 void displayList(const char* title, const char* list[], int itemCount);
 void drawBatteryStatus();
 void drawAP();
+void drawButtonGuide();
 
 #endif // DISPLAY_H

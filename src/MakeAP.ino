@@ -29,17 +29,26 @@ void setup() {
   Serial.begin(9600);
   M5.Display.setRotation(1);
   
+  // Initialize device detection
+  initDeviceConfig();
+  input.begin();
+  
   M5.Lcd.fillScreen(TFT_BLACK);
-  // Display loading screen
-  M5.Lcd.pushImage(0, 0, imgWidth, imgHeight, img);
+  // Display loading screen (centered for M5Core2: 320x240 screen, image is 240x135)
+  int loadingX = (deviceConfig.type == DEVICE_M5CORE2) ? (WIDTH - imgWidth) / 2 : 0;
+  int loadingY = (deviceConfig.type == DEVICE_M5CORE2) ? (HEIGHT - imgHeight) / 2 : 0;
+  M5.Lcd.pushImage(loadingX, loadingY, imgWidth, imgHeight, img);
   delay(2000);
 
   M5.Display.setTextColor(GREEN);
   M5.Display.setTextDatum(middle_center);
+  
+  Serial.println("Setup complete!");
 }
 
 void loop() {
   M5.update(); // Update buttons state
+  input.update(); // Update input handler
   static int preSelectedIndex = -1; // Track previous selection
 
   if (!creatingAP) {
@@ -60,8 +69,22 @@ void loop() {
         renderList = false;
       }
 
-      // If button B is pressed, go down the list
-      if (M5.BtnB.wasPressed()) {
+      // Handle list navigation - Device agnostic using InputHandler
+      // UP button (M5Core2 left / M5Stick PWR)
+      if (input.wasUpPressed()) {
+        selectedIndex--;
+        if (selectedIndex < 0) {
+          // Wrap to bottom
+          if (selectedSSID != "") {
+            selectedIndex = passwordCount - 1;
+          } else {
+            selectedIndex = ssidCount - 1;
+          }
+        }
+      }
+      
+      // DOWN button (M5Core2 right / M5Stick BtnB)
+      if (input.wasDownPressed()) {
         selectedIndex++;
         if (selectedSSID != "") {
           if (selectedIndex >= passwordCount) {
@@ -74,8 +97,8 @@ void loop() {
         }
       }
       
-      // If the button A is pressed, confirm selection
-      if (M5.BtnA.wasPressed()) {
+      // SELECT button (M5Core2 center / M5Stick BtnA)
+      if (input.wasSelectPressed()) {
         if (selectedSSID != "") {
           // Set selected password
           if (selectedIndex == 0) {
@@ -91,7 +114,6 @@ void loop() {
           // Set selected SSID
           if (selectedIndex == 0) {
             isKeyboardOpen = true;
-            Serial.print("MAIN: RENDERING KEYBOARD");
             drawKeyboard(selectedSSID, false, 0, 0, -1, -1);
           } else {
             selectedSSID = ssidList[selectedIndex];
@@ -112,12 +134,12 @@ void loop() {
           inputValue = "";
           selectedIndex = 0;
           preSelectedIndex = selectedIndex;
-          }
         }
       }
+    }
   } else {
-    // Reboot on power button press if in AP view
-    if (M5.BtnPWR.wasPressed()) {
+    // Reboot on select button press for both devices
+    if (input.wasSelectPressed()) {
       esp_restart();
     }
   }
