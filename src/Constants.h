@@ -2,6 +2,8 @@
 #define CONSTANTS_H
 
 #include <M5Unified.h>
+#include "DeviceConfig.h"
+#include "InputHandler.h"
 #include "File.h"
 #include "KeyboardImg.h"
 #include "Router.h"
@@ -39,8 +41,11 @@ extern int selectedIndex;
 ///
 
 #define ROTATION 1
-#define WIDTH M5.Lcd.width()
-#define HEIGHT M5.Lcd.height()
+#define WIDTH deviceConfig.screenWidth
+#define HEIGHT deviceConfig.screenHeight
+
+// Device-specific scaling
+#define SCALE_FACTOR ((float)WIDTH / 135.0f)  // M5Stick C Plus is base (135px width)
 
 
 
