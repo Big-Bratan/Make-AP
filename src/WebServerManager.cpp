@@ -1,5 +1,6 @@
 #include "WebServerManager.h"
 #include <SPI.h>
+#include <WiFi.h>
 
 // M5Core2 SD card SPI pins
 #define SD_SPI_CS_PIN   4
@@ -7,8 +8,12 @@
 #define SD_SPI_MISO_PIN 38
 #define SD_SPI_MOSI_PIN 23
 
-// Global web server instance
+// DNS port for captive portal
+#define DNS_PORT 53
+
+// Global web server and DNS server instances
 WebServer* webServer = nullptr;
+DNSServer* dnsServer = nullptr;
 bool isServingFile = false;
 String currentServedFile = "";
 
@@ -122,37 +127,56 @@ bool startWebServer(String filename) {
     return false;
   }
   
+  // Create DNS server for captive portal (redirect all domains to AP IP)
+  dnsServer = new DNSServer();
+  IPAddress apIP = WiFi.softAPIP();
+  
+  // Start DNS server - redirect ALL domains to the AP IP
+  if (!dnsServer->start(DNS_PORT, "*", apIP)) {
+    Serial.println("DNS server failed to start!");
+    delete dnsServer;
+    dnsServer = nullptr;
+  } else {
+    Serial.println("All domains redirect to: " + apIP.toString());
+  }
+  
   // Create new web server instance
   webServer = new WebServer(80);
   
   // Serve the main HTML file
   webServer->on("/", [htmlContent]() {
+    IPAddress clientIP = webServer->client().remoteIP();
+    Serial.println("Client: " + clientIP.toString() + " -> GET /");
     webServer->send(200, "text/html", htmlContent);
   });
   
   // Handle other file requests from sites/ directory
-  webServer->onNotFound([]() {
+  webServer->onNotFound([htmlContent]() {
     String path = webServer->uri();
+    IPAddress clientIP = webServer->client().remoteIP();
+    
+    Serial.println("Client: " + clientIP.toString() + " -> GET " + path);
     
     // Remove leading slash for SD card path
-    if (path.startsWith("/")) {
-      path = path.substring(1);
+    String pathNoSlash = path;
+    if (pathNoSlash.startsWith("/")) {
+      pathNoSlash = pathNoSlash.substring(1);
     }
     
-    // Try to serve from sites/ directory
-    String fullPath = "/sites/" + path;
+    // Try to serve actual files from sites/ directory (CSS, JS, images, etc.)
+    String fullPath = "/sites/" + pathNoSlash;
     if (SD.exists(fullPath)) {
       File file = SD.open(fullPath);
       if (file && !file.isDirectory()) {
-        String contentType = getContentType(path);
+        String contentType = getContentType(pathNoSlash);
         webServer->streamFile(file, contentType);
         file.close();
+        Serial.println("  -> 200 OK (" + contentType + ")");
         return;
       }
     }
-    
-    // File not found
-    webServer->send(404, "text/plain", "File Not Found");
+
+    webServer->send(200, "text/html", htmlContent);
   });
   
   // Start the server
@@ -171,6 +195,12 @@ bool startWebServer(String filename) {
 ** Description:   Stop web server and cleanup
 ***************************************************************************************/
 void stopWebServer() {
+  if (dnsServer != nullptr) {
+    dnsServer->stop();
+    delete dnsServer;
+    dnsServer = nullptr;
+  }
+  
   if (webServer != nullptr) {
     webServer->stop();
     delete webServer;
@@ -186,6 +216,10 @@ void stopWebServer() {
 ** Description:   Handle web server client requests (call in loop)
 ***************************************************************************************/
 void handleWebServerClient() {
+  if (dnsServer != nullptr) {
+    dnsServer->processNextRequest();
+  }
+  
   if (webServer != nullptr && isServingFile) {
     webServer->handleClient();
   }

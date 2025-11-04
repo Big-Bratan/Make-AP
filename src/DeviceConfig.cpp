@@ -41,7 +41,6 @@ void initDeviceConfig() {
     }
   }
   
-  Serial.printf("Screen: %dx%d\n", deviceConfig.screenWidth, deviceConfig.screenHeight);
 }
 
 /***************************************************************************************

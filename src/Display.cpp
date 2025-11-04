@@ -140,10 +140,29 @@ void drawAP() {
   M5.Display.setCursor(textX, HEIGHT / 2 - 5);
   M5.Display.print("Starting AP...");
 
-  WiFi.softAP(selectedSSID.c_str(), selectedPassword.c_str());
+  // Configure AP with static IP - gateway and DNS both point to AP
+  IPAddress local_IP(192, 168, 4, 1);
+  IPAddress gateway(192, 168, 4, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  
+  // Configure the AP's network settings
+  WiFi.softAPConfig(local_IP, gateway, subnet);
+  
+  // Start the AP
+  if (selectedPassword.length() == 0) {
+    WiFi.softAP(selectedSSID.c_str());  // Open network
+  } else {
+    WiFi.softAP(selectedSSID.c_str(), selectedPassword.c_str());
+  }
+  
   creatingAP = true;
   // Wait for the AP to be started
   delay(1000);
+  
+  Serial.println("AP started:");
+  Serial.println("  IP: " + WiFi.softAPIP().toString());
+  Serial.println("  Gateway: " + WiFi.softAPIP().toString());
+  Serial.println("  Note: Clients must use AP as DNS for captive portal");
 
   // Refresh screen - clear info area but not button guide
   int clearHeight = (deviceConfig.type == DEVICE_M5CORE2) ? boxHeight - 20 : HEIGHT - 35;

@@ -3,11 +3,13 @@
 
 #include <Arduino.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <SD.h>
 #include <vector>
 
-// Web server instance
+// Web server and DNS server instances
 extern WebServer* webServer;
+extern DNSServer* dnsServer;
 
 // Current serving state
 extern bool isServingFile;

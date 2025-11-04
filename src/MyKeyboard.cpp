@@ -198,7 +198,6 @@ void handleKeyboardInput() {
       auto t = M5.Touch.getDetail();
       int tx = t.x;
       int ty = t.y;
-      Serial.printf("Keyboard touch: x=%d, y=%d\n", tx, ty);
       
       // Check if touch is on special buttons (OK, CAP, DEL, SPACE)
       if (ty >= 3 && ty <= 3 + btnHeight) {

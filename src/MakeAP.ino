@@ -68,6 +68,18 @@ void loop() {
   input.update(); // Update input handler
   static int preSelectedIndex = -1; // Track previous selection
 
+  // Log connected devices periodically when AP is running
+  static unsigned long lastClientCheck = 0;
+  static int lastClientCount = 0;
+  if (creatingAP && millis() - lastClientCheck > 5000) {  // Check every 5 seconds
+    lastClientCheck = millis();
+    int clientCount = WiFi.softAPgetStationNum();
+    if (clientCount != lastClientCount) {
+      lastClientCount = clientCount;
+      Serial.println("Connected devices: " + String(clientCount));
+    }
+  }
+
   // Handle web server if serving
   if (isServingFile) {
     handleWebServerClient();
@@ -201,10 +213,9 @@ void loop() {
       // SELECT button (M5Core2 center / M5Stick BtnA)
       if (input.wasSelectPressed()) {
         if (selectedSSID != "") {
-          // Set selected password
+          // Set selected password (no minimum length required - can be blank)
           if (selectedIndex == 0) {
             isKeyboardOpen = true;
-            hasMinLenToValidate = true;
             drawKeyboard(selectedPassword, false, 0, 0, -1, -1);
           } else {
             selectedPassword = passwordList[selectedIndex];
@@ -224,10 +235,20 @@ void loop() {
       }
     } else {
       handleKeyboardInput();
-      // Check if keyboard is closed and SSID is selected
-      if (!isKeyboardOpen && inputValue != "") {
+      // Check if keyboard is closed
+      static bool wasKeyboardOpen = false;
+      
+      if (isKeyboardOpen) {
+        wasKeyboardOpen = true;
+      }
+      
+      if (!isKeyboardOpen && wasKeyboardOpen) {
+        wasKeyboardOpen = false;
+        
         if (selectedSSID != "") {
+          // Password was entered (can be blank)
           selectedPassword = inputValue;
+          inputValue = "";
           selectedIndex = 0;
           if (deviceConfig.type == DEVICE_M5CORE2) {
             drawAPWithServeButton();
@@ -235,7 +256,8 @@ void loop() {
           } else {
             drawAP();
           }
-        } else {
+        } else if (inputValue != "") {
+          // SSID was entered (cannot be blank)
           selectedSSID = inputValue;
           inputValue = "";
           selectedIndex = 0;
