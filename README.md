@@ -80,7 +80,7 @@ Hold Button `POWER` to shut down.
 #### `SSID selection view` :
 
 <div style="padding-bottom: 20px;">
-<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/SsidViewM5core.png" alt="M5Core2 - List view" width="320">
+<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/SsidViewM5core.png" alt="M5Core2 - List view" width="210">
 </div>
 
 - Navigate with M5Core2 buttons `UP`, `SELECT`, `DOWN`.
@@ -88,7 +88,7 @@ Hold Button `POWER` to shut down.
 #### `Keyboard view` :
 
 <div style="padding-bottom: 20px;">
-<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/KeyboardViewM5core.png" alt="M5Core2 - Keyboard view" width="320">
+<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/KeyboardViewM5core.png" alt="M5Core2 - Keyboard view" width="210">
 </div>
 
 - Use touch screen.
@@ -96,16 +96,16 @@ Hold Button `POWER` to shut down.
 #### `AP view` :
 
 <div style="padding-bottom: 20px;">
-<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/ApViewM5core.png" alt="M5Core2 - AP view" width="320">
+<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/ApViewM5core.png" alt="M5Core2 - AP view" width="210">
 </div>
 
 - Left button `RESTART` to reboot.
-- Right button `SERVE` to select and serve files<sup>[ⓘ](#usage)</sup> from SD card.
+- Right button `SERVE` to select and serve files from SD card.
 
 #### `File selection view` <sub>(SD card required):</sub>
 
 <div style="padding-bottom: 20px;">
-<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/SdDataViewM5core.png" alt="M5Core2 - File browsing view" width="320">
+<img src="https://raw.githubusercontent.com/Big-Bratan/Make-AP/main/img/SdDataViewM5core.png" alt="M5Core2 - File browsing view" width="210">
 </div>
 
 - Navigate with M5Core2 buttons `UP`, `SELECT`, `DOWN`.
